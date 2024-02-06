@@ -1,10 +1,9 @@
 package hello.itemservice.web.basic;
 
-import hello.itemservice.domain.item.DeliveryCode;
-import hello.itemservice.domain.item.Item;
-import hello.itemservice.domain.item.ItemRepository;
-import hello.itemservice.domain.item.ItemType;
+import hello.itemservice.domain.item.*;
 import hello.itemservice.web.validation.ItemValidator;
+import hello.itemservice.web.validation.form.ItemSaveForm;
+import hello.itemservice.web.validation.form.ItemUpdateForm;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -86,13 +85,21 @@ public class BasicItemController {
     /**
      * RedirectAttributes
      */
-    @PostMapping("/add")
-    public String addItem(@Validated @ModelAttribute Item item, BindingResult bindingResult, RedirectAttributes redirectAttributes) {
+    @PostMapping("/addv1")
+    public String addItemV1(@Validated(SaveCheck.class) @ModelAttribute Item item, BindingResult bindingResult, RedirectAttributes redirectAttributes) {
 
         // 검증 로직
         /*if(itemValidator.supports(item.getClass())) {
             itemValidator.validate(item, bindingResult);
         }*/
+
+        //특정 필드가 아닌 복합 룰 검증
+        if (item.getPrice() != null && item.getQuantity() != null) {
+            int resultPrice = item.getPrice() * item.getQuantity();
+            if (resultPrice < 10000) {
+                bindingResult.reject("totalPriceMin", new Object[]{10000, resultPrice}, null);
+            }
+        }
 
         // 실패 로직
         if (bindingResult.hasErrors()) {
@@ -108,6 +115,36 @@ public class BasicItemController {
         return "redirect:/basic/items/{itemId}";
     }
 
+    @PostMapping("/add")
+    public String addItemV2(@Validated @ModelAttribute("item") ItemSaveForm form, BindingResult bindingResult, RedirectAttributes redirectAttributes) {
+
+        //특정 필드가 아닌 복합 룰 검증
+        if (form.getPrice() != null && form.getQuantity() != null) {
+            int resultPrice = form.getPrice() * form.getQuantity();
+            if (resultPrice < 10000) {
+                bindingResult.reject("totalPriceMin", new Object[]{10000, resultPrice}, null);
+            }
+        }
+
+        // 실패 로직
+        if (bindingResult.hasErrors()) {
+            log.info("errors={}", bindingResult);
+            return "basic/addForm";
+        }
+
+        // 성공 로직일 때는 객체를 생성해주고 그 값을 넘긴다.
+        Item item = new Item();
+        item.setItemName(form.getItemName());
+        item.setPrice(form.getPrice());
+        item.setQuantity(form.getQuantity());
+
+        Item savedItem = itemRepository.save(item);
+        redirectAttributes.addAttribute("itemId", savedItem.getId());
+        redirectAttributes.addAttribute("status", true);
+
+        return "redirect:/basic/items/{itemId}";
+    }
+
     @GetMapping("/{itemId}/edit")
     public String editForm(@PathVariable("itemId") Long itemId, Model model) {
         Item item = itemRepository.findById(itemId);
@@ -116,7 +153,28 @@ public class BasicItemController {
     }
 
     @PostMapping("/{itemId}/edit")
-    public String edit(@PathVariable("itemId") Long itemId, @ModelAttribute Item item) {
+    public String edit(@PathVariable("itemId") Long itemId, @Validated @ModelAttribute ItemUpdateForm form, BindingResult bindingResult) {
+
+        //특정 필드가 아닌 복합 룰 검증
+        if (form.getPrice() != null && form.getQuantity() != null) {
+            int resultPrice = form.getPrice() * form.getQuantity();
+            if (resultPrice < 10000) {
+                bindingResult.reject("totalPriceMin", new Object[]{10000, resultPrice}, null);
+            }
+        }
+
+        // 실패 로직
+        if (bindingResult.hasErrors()) {
+            log.info("errors={}", bindingResult);
+            return "basic/editForm";
+        }
+
+        // 성공 로직일 때는 객체를 생성해주고 그 값을 넘긴다.
+        Item item = new Item();
+        item.setItemName(form.getItemName());
+        item.setPrice(form.getPrice());
+        item.setQuantity(form.getQuantity());
+
         itemRepository.update(itemId, item);
         return "redirect:/basic/items/{itemId}";
     }

@@ -45,7 +45,7 @@
         <div>
             <label for="quantity" th:text="#{label.item.quantity}">수량</label>
             <input type="text" id="quantity" th:field="*{quantity}" th:errorclass="field-error" class="form-control" th:placeholder="#{ph.item.inputQuantity}">
-            <div class="field-error" th:errors="*{price}">
+            <div class="field-error" th:errors="*{quantity}">
                 상품명 오류
             </div>
         </div>
